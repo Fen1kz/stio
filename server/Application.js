@@ -6,32 +6,30 @@ import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
 import {ApiRouter} from './api/ApiRouter';
 
+import createStore from './store/createStore';
+import {server$socketConnect} from './actions';
+
 import Game from '../shared/game/Game';
 
 export default class Application {
-  constructor(eventBus) {
-    this.app = express();
+  constructor() {
+    this.app = this.createExpressApp();
+    this.store = createStore();
 
-    this.app.use(cookieParser());
-    this.app.use(bodyParser.text());
-    this.app.use(bodyParser.json());
-    this.app.use(bodyParser.urlencoded({extended: true}));
-
-    this.app.use('/api', (new ApiRouter()).router);
-
-    if (module.hot) {
-      module.hot.accept('./loadSockets', this.loadSockets, (err) => console.log('HMR Error', err));
-    }
-    // this.eventBus.on('connection', () => {
-    //   if (!this.game) {
-    //     this.game = new Game();
-    //     this.game.start();
-    //   }
-    //   this.game.join();
-    // }, this)
+    this.httpHandler = this.app;
+    this.socketHandler = (socket) => this.store.dispatch(server$socketConnect(socket));
   }
 
-  loadSockets() {
-    
+  createExpressApp() {
+    const app = express();
+
+    app.use(cookieParser());
+    app.use(bodyParser.text());
+    app.use(bodyParser.json());
+    app.use(bodyParser.urlencoded({extended: true}));
+
+    app.use('/api', (new ApiRouter()).router);
+
+    return app;
   }
 }

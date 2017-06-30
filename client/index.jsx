@@ -1,6 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+import {AppContainer} from 'react-hot-loader';
+import {Provider} from 'react-redux'
+
 // import { combineReducers } from 'redux-immutable';
 // import configureStore from './configuration/configureStore'
 
@@ -9,9 +12,6 @@ import ReactDOM from 'react-dom';
 
 // Routing
 // import {routerReducer, appRouterMiddleware, syncHistoryWithStore} from './configuration/routing';
-
-// History
-// import { browserHistory } from 'react-router';
 
 // Components
 // import { Root } from './components/Root.jsx';
@@ -24,16 +24,26 @@ import ReactDOM from 'react-dom';
 // import 'react-mdl/extra/material.min.js'
 // import './styles/style.scss';
 
+// Store
+import createHistory from 'history/createBrowserHistory';
+import createStore from './store/createStore';
+const history = createHistory();
+const store = createStore(history);
+
 const render = () => {
-  const App = require('./App.jsx').default;
+  const App = require('./views/App').default;
   ReactDOM.render(
-    <App/>,
-    document.getElementById('app')
+    <AppContainer>
+      <Provider store={store}>
+        <App history={history}/>
+      </Provider>
+    </AppContainer>
+    , document.getElementById('app')
   );
 };
 
 render();
 
 if (module.hot) {
-  module.hot.accept('./App.jsx', render);
+  module.hot.accept('./views/App', render);
 }

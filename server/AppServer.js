@@ -2,43 +2,44 @@ import http from 'http';
 import io from 'socket.io';
 import createFrontendMiddleware from './frontend/create-frontend-middleware';
 
+const IO_OPTIONS = {
+  path: '/api/socket-io'
+  , serveClient: false
+  , transports: ['websocket']
+};
+
 export default class AppServer {
   constructor() {
-    this.loadApplication = this.loadApplication.bind(this, () => new (require('./Application').default)(this.events));
-    this.loadSockets = this.loadSockets.bind(this, () => new (require('./loadSockets').default)(this.events));
+    this.loadApplication = this.loadApplication.bind(this, () => new (require('./Application').default)());
     this.nextSocketId = 0;
     this.sockets = {};
 
     this.httpServer = http.createServer();
+    this.httpServer.removeAllListeners('request');
     this.frontendMiddleware = createFrontendMiddleware();
 
     this.loadApplication();
-    this.loadSockets();
 
     if (module.hot) {
       module.hot.accept('./Application', this.loadApplication, (err) => console.log('HMR Error', err));
-      module.hot.accept('./loadSockets', this.loadSockets, (err) => console.log('HMR Error', err));
     }
   }
 
   loadApplication(requireNew) {
     if (this.currentApplication) {
-      this.currentApplication.dispose(this.events);
-      this.httpServer.removeListener('request', this.currentApplication.app);
+      this.httpServer.removeAllListeners('request');
+      this.httpServer.removeAllListeners('upgrade');
+      if (this.ioServer) {
+        this.ioServer.removeAllListeners('connection');
+      }
     }
     this.currentApplication = requireNew();
-    this.frontendMiddleware(this.currentApplication.app);
-    this.httpServer.on('request', this.currentApplication.app);
-    this.ioServer = io(this.httpServer, {path: '/api/socket-io'});
+    this.frontendMiddleware(this.currentApplication.httpHandler);
+    this.httpServer.on('request', this.currentApplication.httpHandler);
+    this.ioServer = io(this.httpServer, IO_OPTIONS);
+    this.ioServer.on('connection', this.currentApplication.socketHandler);
+    console.log('APP LOADED')
   }
-
-  loadSockets(requireNew) {
-    if (this.currentSocketIOListener) {
-      this.ioServer.removeListener('connection', this.currentSocketIOListener);
-    }
-    this.currentSocketIOListener = requireNew(this);
-    this.ioServer.on('connection', this.currentSocketIOListener);
-  };
 
   start() {
     this.httpServer
@@ -63,6 +64,7 @@ export default class AppServer {
     Object.keys(this.sockets).forEach(socketId => {
       this.sockets[socketId].destroy();
     });
+    this.ioServer.close();
     this.httpServer.close();
     return this;
   }

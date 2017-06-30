@@ -15,7 +15,8 @@ console.log('webpack.client.babel', process.env.NODE_ENV);
 export default () => ({
   devtool: isDevelopment ? 'eval' : 'source-map'
   , entry: isDevelopment
-    ? ['webpack-hot-middleware/client'
+    ? ['react-hot-loader/patch'
+      , 'webpack-hot-middleware/client'
       , './client/index.jsx']
     : './client/index.jsx'
   , output: { // Compile into js/build.js
@@ -35,6 +36,7 @@ export default () => ({
     //, new webpack.optimize.CommonsChunkPlugin('common.js')
     // , isDevelopment ? null : new webpack.optimize.UglifyJsPlugin({sourceMap: true, compress: {warnings: false}})
     , isDevelopment ? new webpack.HotModuleReplacementPlugin({quiet: false}) : null
+    , new webpack.NoEmitOnErrorsPlugin()
     , new HtmlWebpackPlugin({
       template: 'client/index.html'
       , inject: true
@@ -55,14 +57,14 @@ export default () => ({
   ].filter(p => !!p)
   , module: {
     rules: [{
-      test: /\.jsx?$/, // Transform all .js files required somewhere with Babel
-      loader: 'babel-loader',
-      exclude: /node_modules/,
-      query: {
+      test: /\.jsx?$/ // Transform all .js files required somewhere with Babel
+      , loader: 'babel-loader'
+      , exclude: /node_modules/
+      , query: {
         presets: isDevelopment
-          ? ['es2015', 'react', 'react-hmre', 'stage-2']
+          ? [['es2015', {modules: false}], 'react', 'stage-2']
           : ['es2015', 'react', 'stage-2']
-        // , plugins: ['babel-root-import', 'transform-class-properties']
+        , plugins: ['react-hot-loader/babel']
       }
     }, {
       // Transform our own .css files with PostCSS and CSS-modules
